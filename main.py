@@ -6,7 +6,7 @@ import time
 import random
 pygame.font.init()
 
-width = 750
+width = 1250
 height = 750
 
 size = (width, height)
@@ -27,7 +27,7 @@ laser_yellow = pygame.image.load(os.path.join("assets", "pixel_laser_yellow.png"
 laser_green = pygame.image.load(os.path.join("assets", "pixel_laser_green.png"))
 laser_blue = pygame.image.load(os.path.join("assets", "pixel_laser_blue.png"))
 
-
+#BG
 background = pygame.transform.scale(pygame.image.load(os.path.join("assets", "background-black.png")), (size))
 
 
@@ -52,6 +52,8 @@ class Ship:
 
     def get_height(self):
         return self.img_ship.get_height()
+
+
 #класс player наследует от ship
 class Player(Ship):
     def __init__(self, x, y, hp=100):
@@ -62,6 +64,15 @@ class Player(Ship):
         self.hp_max = hp
 
 
+
+# как их запрограммировать ччто бы они следовали за тобой,стреляли по игроку?
+# типы врагов
+# мины/пилоты камикадзе что не могут стрелять но следуют за игроком
+#снайперы,что редко стреляют,но выстреливают один сплошной луч+держутся на расстоянии от гг
+#
+#
+#ПЕРЕДЕЛАТЬ из enemy идут классы red enemy,blue и тд
+#у каждого корабля свои свойства(крансые=мины и тд)
 class Enemy(Ship):
     color_map = {
         "red": (spaceShip_red, laser_red),
@@ -84,6 +95,11 @@ def main():
     fps = 60
     clock = pygame.time.Clock()
 
+    #враги
+    enemies = []
+    wave_length = 5
+
+
     player = Player(300, 650)
     player_velocity = 5
 
@@ -93,14 +109,28 @@ def main():
         label_lives = font.render(f"{lives} lives", 1, (255, 255, 255)) #создаем surface с текстом
         screen.blit(label_lives, (10, 10)) # накладываем surface на экран
 
+        for enemy in enemies:
+            enemy.draw(screen)
+
         player.draw(screen)
+
+
 
         pygame.display.update()
 
 
     while game:
         clock.tick(fps)
-        window_redraw()
+
+        # также здесь можно организовать переходна новый уровень
+        #спавн врагов
+        if len(enemies) == 0:
+            for i in range(wave_length):
+                enemy = Enemy(random.randrange(50, width-100), random.randrange(10, 150), random.choice(["red", "blue", "green"]))
+                enemies.append(enemy)
+                # print(enemy.color_map)
+            #game = False
+
 
         for event in pygame.event.get():
 
@@ -118,22 +148,15 @@ def main():
         if keys[pygame.K_w] and player.y - player_velocity >0:
             player.y -= player_velocity
 
+        window_redraw()
+
+
 
 
 
 
 
 main()
-
-
-
-
-
-
-
-
-
-
 
 
 
