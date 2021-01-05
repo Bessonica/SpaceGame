@@ -16,7 +16,7 @@ pygame.display.set_caption("SpaceGame")
 
 #загружаем файлы из assets
 
-#!!! В КОНЦЕ КАЖДОГО image.load должен быть .convert() !!
+#!!! В КОНЦЕ КАЖДОГО image.load должен быть .convert() !! convert не работает,вокруг корабля стоит прямоугольник черный
 
 spaceShip_red = pygame.image.load(os.path.join("assets", "pixel_ship_red_small.png"))
 spaceShip_green = pygame.image.load(os.path.join("assets", "pixel_ship_green_small.png"))
@@ -56,8 +56,23 @@ class Ship:
         return self.img_ship.get_height()
 
 
-    def give_position(self):
+    def give_position(self):  #нужно что бы корабли могли прицелиться и выстрелить в гг
         return self.x, self.y
+
+    #тестовый метод,если у кораблей будут разные стили стрельбы то нужно делать метод для каждого класса,
+    # !!ИЛИ СДЕЛАТЬ ОБЕРТКУ!!!
+    def shoot(self):
+        if self.coolD_counter == 0:
+            laser = Laser(self.x, self.y, self.img_laser)
+            self.lasers.append(laser)
+            self.coolD_counter = 1
+
+    #нам не нужно что бы корабли могли спамить своими выстрелами,
+    def cooldown(self):
+        if self.coolD_counter == 0:
+            self.coolD_counter = 0
+        elif self.coolD_counter >0:
+            self.coolD_counter +=1
 
 
 #класс player наследует от ship
@@ -66,7 +81,7 @@ class Player(Ship):
         super().__init__(x, y, hp) #используем метод инит из ship
         self.img_ship = spaceShip_yellow
         self.img_laser = laser_yellow
-        self.mask = pygame.mask.from_surface(self.img_ship)#коллизия
+        self.mask = pygame.mask.from_surface(self.img_ship)#коллизия!!!!
         self.hp_max = hp
 
 
@@ -79,8 +94,8 @@ class Player(Ship):
 
 #снайперы,что редко стреляют,но выстреливают один сплошной луч+держутся на расстоянии от гг
 #или пусть снафперы делают один выстрел и отлетают в рандомную сторону
+# можно ввести противника турель у кот не будет метода(из ship) cooldown-a
 #
-#ПЕРЕДЕЛАТЬ из enemy идут классы red enemy,blue и тд
 #у каждого корабля свои свойства(крансые=мины и тд)
 class Enemy(Ship):
     color_map = {
@@ -104,13 +119,14 @@ class RedEnemy(Enemy):
     def __init__(self, x, y, color, hp = 100):
         super().__init__(x, y, color, hp)
 
-#может переименовать move в attack?или отдельный метод attack, что внутри себя использует move?+++после части #управление
-#вместо move вписать attack
+    #может переименовать move в attack?или отдельный метод attack, что внутри себя использует move?+++после части #управление
+    #вместо move вписать attack
     def move(self, vel = 1):  #корабль следует медленно за игроком
         self.x -= vel
 
     def attack(self):
-        self.move()
+        pass
+       # self.move()
 
 #проблема как достать координату игроку в класс Redenemy
 
@@ -124,19 +140,67 @@ class BlueEnemy(Enemy):
     def move(self, vel = 1):  #корабль отлетает от игрока в сторону и снова делает выстрел
         self.y -= vel
 
-    def attack(self):
-        self.move()
+    def attack(self):   #здесь применяем move и laser
+        pass
+        #self.move()
 
+
+#____________________________________
 
 #подумай, лазер будет иметь в себе расположение игрока,или это будет определяться в методе attack(скорее всего в атак,ведь
 #у каждого корабля свой стиль атаки может быть
+#
+#в будущем сделать потомков лазера=разне виды выстрелов(сплошной луч,короткий,но быстрый выстрел и тд)
 class Laser:
     def __init__(self, x, y, img):
+        self.x = x
+        self.y = y
+        self.img = img
+        self.mask = pygame.mask.from_surface(self.img) #коллизия?
+
+
+    def draw(self, window):
+        window.blit(self.img, (self.x, self.y))
+
+
+        # лазер должен двигаться по прямой траектории,не следовать за игроком.во время выстрела
+        #метод находит координату игрока и движется к ней,делает только один раз,во время выстрела
+    def move(self, vel):     #при ппадании по игроку lives -= 1
+        self.y +=vel
+
+
+    def notOn_screen(self):  #удалить лазер если он вне экрана
+        pass
+
+    # создать универс. функцию collide что будет смотреть-попал ли лазер по кораблю(любому) и прикоснулся ли red ship
+    # с другим кораблем.по сути смотрит на коллизию любых двух обьектов.
+    # а здесь мы смотрим как поведет лазер,если он соприкоснется с кораблем(collide == True)
+    def collision(self, obj):
+        return Collide(obj, self)
         pass
 
 
+#____________________________________________
 
 
+
+#проверяет столкнулись ли два обьекта(корабли лазеры с кораблями и тд)
+#мож ввести взрыв,когда два лезара врезаются в друг дргуа
+# возвращает true если произошло столкновение
+def Collide(obj1, obj2):
+    offset_x = obj2.x - obj1.x
+    offset_y = obj2.y - obj1.y
+    return obj1.mask.overlap(obj2.massk, (offset_x, offset_y)) != None
+
+
+
+
+#___________________________________________
+
+#мож сделать цикл в while game: где есть цикл где каждый обьект в enemies проверяется с Collide,если да то исполь метод
+
+# и цикл для лазеров(lasers) что проверяет вышли ли они за предел экрана.думаю такая себе идея,столько лазеров возможны лаги
+#может ввести метод(notOn_screen) в функцию attack
 
 def main():
     game = True
@@ -154,8 +218,8 @@ def main():
     player = Player(300, 650)
     player_velocity = 5
     game_over = False    #перемення что бы знать когда создавать меню при проигрыше,перезагружать игру
-#________________________________________
 
+    #________________________________________
     def window_redraw():
         screen.blit(background, (0, 0)) #на surface screen перемещаем изобр background на координаты 0, 0
         label_lives = font.render(f"{lives} lives", 1, (255, 255, 255)) #создаем surface с текстом
@@ -172,10 +236,13 @@ def main():
 
 
         pygame.display.update()
-#_____________________________________
+    #_____________________________________
+
+    # мож сделать цикл в while game: где есть цикл где каждый обьект в enemies проверяется с Collide,если да то исполь метод
 
     while game:
         clock.tick(fps)
+        window_redraw()
 
         if lives <= 0 or player.hp <= 0:  #!!game over screen!!  game_over = true. ввсти выход в меню и удалить всех врагов+вернуть hp игроку
             game_over = True
@@ -186,7 +253,7 @@ def main():
         # random.choice(["red","blue", "green"])
 
 
-        if len(enemies) == 0:  #также если игрок все еще не начал новую игру(game_over=true)не спавнить врагов
+        if len(enemies) == 0:   #также если игрок все еще не начал новую игру(game_over=true)не спавнить врагов
             for i in range(wave_length):
                 enemy = RedEnemy(random.randrange(50, width-100), random.randrange(10, 150), "red") #!!!!!!!!!!!!!!!redenemy = enemy
                 enemies.append(enemy)
@@ -230,7 +297,7 @@ def main():
 
         #print(player.give_position())
         #print(enemies[0].give_position())
-        window_redraw()
+
 
 
 
@@ -239,14 +306,14 @@ main()
 # как получить расположение мыши
 # pg.mouse.get_pos()
 #
-#сделать коллизию - взрыв камикадзе
+#сделать коллизию - взрыв камикадзе СТРОКА 69
 #сделать стрельу для корабля игрока и убийство врагов
 #
+#!!часто игра начинает тормозить!! похоже это происходить при коллизии с врагами.через час проблема пропала,мож беда в ноуте самом?
 #
-
-
-
-
+#class Enemy передеать зачем нам теперь colormap?
+#можно ли коллизию(self.mask = pygame.mask.from_surface(self.img)) поместить не в отдельные классы кораблей
+#а в общий класс Ship? !!может поместить mask в класс Enemy,там уже определяют изображение кораблям
 
 
 
