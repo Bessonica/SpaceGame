@@ -35,6 +35,9 @@ background = pygame.transform.scale(pygame.image.load(os.path.join("assets", "ba
 
 #общий класс для кораблей,от него наследуют корабли врагов и корабль игрока
 class Ship:
+    CoolDown = 30
+
+
     def __init__(self, x, y, hp=100):  #присваиваем общие характеристики всех кораблей
         self.x = x
         self.y = y
@@ -47,6 +50,8 @@ class Ship:
 
     def draw(self, window):
         screen.blit(self.img_ship, (self.x, self.y))
+        for laser in self.lasers:
+            laser.draw(screen)
 
 
     def get_width(self):
@@ -60,7 +65,7 @@ class Ship:
         return self.x, self.y
 
     #тестовый метод,если у кораблей будут разные стили стрельбы то нужно делать метод для каждого класса,
-    # !!ИЛИ СДЕЛАТЬ ОБЕРТКУ!!!
+    # !!ИЛИ СДЕЛАТЬ ОБЕРТКУ!!! в классах redenemy,blue
     def shoot(self):
         if self.coolD_counter == 0:
             laser = Laser(self.x, self.y, self.img_laser)
@@ -69,20 +74,47 @@ class Ship:
 
     #нам не нужно что бы корабли могли спамить своими выстрелами,
     def cooldown(self):
-        if self.coolD_counter == 0:
+        if self.coolD_counter >= self.CoolDown:
             self.coolD_counter = 0
-        elif self.coolD_counter >0:
-            self.coolD_counter +=1
+        elif self.coolD_counter > 0:
+            self.coolD_counter += 1
+
+
+    # def laser_draw(self, vel, obj):  #метод рисует лазеры и проверяет столкнулись они с обьектом,а поведение обьектов будет расписано в классах
+    #     self.cooldown()
+    #     for laser in self.lasers:
+    #         laser.move(vel)
+    #         if laser.notOn_screen(height):
+    #             self.lasers.remove(laser)
+    #         elif laser.collision(obj):
+    #             obj.hp -= 1
+    #             self.lasers.remove(laser)  #лазер попал по обьекту и пропал
+
 
 
 #класс player наследует от ship
 class Player(Ship):
-    def __init__(self, x, y, hp=100):
+    def __init__(self, x, y, hp=10):
         super().__init__(x, y, hp) #используем метод инит из ship
         self.img_ship = spaceShip_yellow
         self.img_laser = laser_yellow
         self.mask = pygame.mask.from_surface(self.img_ship)#коллизия!!!!
         self.hp_max = hp
+
+
+    def laser_draw(self, vel, obj):
+        self.cooldown()
+        for laser in self.lasers:
+            laser.move(vel)
+            if laser.notOn_screen(height):
+                self.lasers.remove(laser)
+            else:
+                for enShip in obj:
+                    if laser.collision(enShip):
+                        obj.remove(enShip)
+                        if laser in self.lasers:
+                            self.lasers.remove(laser)
+
 
 
 
@@ -107,6 +139,7 @@ class Enemy(Ship):
     def __init__(self, x, y, color, hp=100):
         super().__init__(x, y, hp)
         self.img_ship, self.img_laser = self.color_map[color]
+        self.mask = pygame.mask.from_surface(self.img_ship)
 
     # def move(self, vel):  #для каждого типа корабля свое передвижение,так что это немного бесполезно
     #     self.y += vel
@@ -166,10 +199,12 @@ class Laser:
         # лазер должен двигаться по прямой траектории,не следовать за игроком.во время выстрела
         #метод находит координату игрока и движется к ней,делает только один раз,во время выстрела
     def move(self, vel):     #при ппадании по игроку lives -= 1
-        self.y +=vel
+        self.y +=vel   #сделать так что бы лазер летел на позицию игрока!!!
 
 
-    def notOn_screen(self):  #удалить лазер если он вне экрана
+    def notOn_screen(self, height):  #удалить лазер если он вне экрана
+        return  not(self.y <= height and self.y >= 0)
+
         pass
 
     # создать универс. функцию collide что будет смотреть-попал ли лазер по кораблю(любому) и прикоснулся ли red ship
@@ -190,7 +225,7 @@ class Laser:
 def Collide(obj1, obj2):
     offset_x = obj2.x - obj1.x
     offset_y = obj2.y - obj1.y
-    return obj1.mask.overlap(obj2.massk, (offset_x, offset_y)) != None
+    return obj1.mask.overlap(obj2.mask, (offset_x, offset_y)) != None
 
 
 
@@ -214,13 +249,15 @@ def main():
     enemies = []
     wave_length = 5
 
+    laser_vel = 5
+
 
     player = Player(300, 650)
     player_velocity = 5
     game_over = False    #перемення что бы знать когда создавать меню при проигрыше,перезагружать игру
 
     #________________________________________
-    def window_redraw():
+    def window_redraw():   #выписать HP игрока на экран!!!
         screen.blit(background, (0, 0)) #на surface screen перемещаем изобр background на координаты 0, 0
         label_lives = font.render(f"{lives} lives", 1, (255, 255, 255)) #создаем surface с текстом
         screen.blit(label_lives, (10, 10)) # накладываем surface на экран
@@ -287,11 +324,28 @@ def main():
             player.y += player_velocity
         if keys[pygame.K_w] and player.y - player_velocity >0:
             player.y -= player_velocity
+        if keys[pygame.K_SPACE]: #лазер формируется только один раз,мож проблема в cooldown?
+            print('shoooot')
+            player.shoot()
+
 
 
 # здесь нужно ввест координату игрока в метод attack(сделал метод give_position у ship- можно применить у всех кораблей)
+        #пока обойдусь без аттак проверь реагируют ли враги/игрок на выстрелы по себе
         for enemy in enemies:
             enemy.attack()  # 2 = enemy velocity
+
+            #здесь настроить поведение для камикадзе
+            #если collide = true и враг = redenemy.запустить метод explode для red enemy.написать метод explode
+            #а можно ли вставить этот луп в метод attack для каждого екласса кораблей
+        for enemy in enemies:
+            if Collide(enemy, player):
+                lives -= 1
+                enemies.remove(enemy)
+
+
+
+        player.laser_draw(-laser_vel, enemies)
 
 
 
@@ -314,6 +368,21 @@ main()
 #class Enemy передеать зачем нам теперь colormap?
 #можно ли коллизию(self.mask = pygame.mask.from_surface(self.img)) поместить не в отдельные классы кораблей
 #а в общий класс Ship? !!может поместить mask в класс Enemy,там уже определяют изображение кораблям
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
 
 
 
