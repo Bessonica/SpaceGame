@@ -17,17 +17,15 @@ pygame.display.set_caption("SpaceGame")
 
 #загружаем файлы из assets
 
-#!!! В КОНЦЕ КАЖДОГО image.load должен быть .convert() !! convert не работает,вокруг корабля стоит прямоугольник черный
+
 
 spaceShip_red = pygame.image.load(os.path.join("assets", "pixel_ship_red_small.png"))
-spaceShip_green = pygame.image.load(os.path.join("assets", "pixel_ship_green_small.png"))
 spaceShip_blue = pygame.image.load(os.path.join("assets", "pixel_ship_blue_small.png"))
 
 spaceShip_yellow = pygame.image.load(os.path.join("assets", "pixel_ship_yellow.png"))
 
 laser_red = pygame.image.load(os.path.join("assets", "pixel_laser_red.png"))
 laser_yellow = pygame.image.load(os.path.join("assets", "pixel_laser_yellow.png"))
-laser_green = pygame.image.load(os.path.join("assets", "pixel_laser_green.png"))
 laser_blue = pygame.image.load(os.path.join("assets", "pixel_laser_blue.png"))
 
 
@@ -39,13 +37,13 @@ class Ship:
     CoolDown = 30
 
 
-    def __init__(self, x, y, hp=100):  #присваиваем общие характеристики всех кораблей
+    def __init__(self, x, y, hp=100):
         self.x = x
         self.y = y
         self.hp = hp
         self.img_ship = None
         self.img_laser = None
-        self.lasers = []   #тут будут хранится разные лазеры для разных классов кораблей
+        self.lasers = []
         self.coolD_counter = 0
 
 
@@ -62,14 +60,14 @@ class Ship:
         return self.img_ship.get_height()
 
 
-    def give_position(self):  #нужно что бы корабли могли прицелиться и выстрелить в гг
+    def give_position(self):
         return self.x, self.y
 
     #тестовый метод,если у кораблей будут разные стили стрельбы то нужно делать метод для каждого класса,
-    # !!ИЛИ СДЕЛАТЬ ОБЕРТКУ!!! в классах redenemy,blue
-    def shoot(self):
+
+    def shoot(self, direction):   #аргумент что будет решать куда пойдет лазер
         if self.coolD_counter == 0:
-            laser = Laser(self.x, self.y, self.img_laser)
+            laser = Laser(self.x, self.y, self.img_laser, direction)
             self.lasers.append(laser)
             self.coolD_counter = 1
 
@@ -89,7 +87,7 @@ class Ship:
                 self.lasers.remove(laser)
             elif laser.collision(obj):
                 obj.hp -= 1
-                self.lasers.remove(laser)  #лазер попал по обьекту и пропал
+                self.lasers.remove(laser)
 
 
 
@@ -117,14 +115,50 @@ class Player(Ship):
                         if laser in self.lasers:
                             self.lasers.remove(laser)
 
+
     def hp_bar(self, screen):
         pygame.draw.rect(screen, (255, 0, 0), (self.x, self.y + self.img_ship.get_height() + 10, self.img_ship.get_width(), 10))
         pygame.draw.rect(screen, (0, 255, 0), (self.x, self.y + self.img_ship.get_height() + 10, self.img_ship.get_width()*(self.hp/self.hp_max), 10))
+        #print(self.x, self.y, "TEST")
 
     #взяли метод у родителя(ship) и добавили в него hp_bar()
     def draw(self, screen):
         super().draw(screen)
         self.hp_bar(screen)
+
+
+        # #angle = 90
+        # mouse =[]
+        # mouse.append(angle)
+        # dx = mouse[0][0] - self.x
+        # dy = mouse[0][1] - self.y
+        # rads = math.atan2(-dy, dx)
+        # rads %=2*math.pi
+        # degs = 6+math.degrees(rads)   #!!!
+        # print(self.rect.centery, "TOYOOOOOOOOO")
+        # player_img = pygame.transform.rotate(self.img_ship, degs)
+        # player_rec = player_img.get_rect(topleft=(self.x, self.y))
+        # screen.blit(player_img, player_rec.topleft)
+        # pygame.display.update()
+
+
+        #WORKSSSSSS
+        # player_img = pygame.transform.rotate(self.img_ship, angle)
+        # player_rec = player_img.get_rect(topleft=(self.x, self.y))  #или без аргумента topleft, тести
+        # print(player_rec, "player rect")
+        # screen.blit(player_img, player_rec.topleft)
+        # pygame.display.update()
+        #
+
+
+        # player_img = pygame.transform.rotate(self.img_ship, 20)
+        # player_rect = player_img.get_rect()
+        # player_rect.center = (self.x, self.y)
+        # screen.blit(player_img,player_rect )
+
+        # offset = (mouse[0] - self.x, mouse[1]-self.y )
+        # pygame.transform.rotate(self.img_ship, 50)
+        # print(offset)
 
 
 
@@ -144,7 +178,7 @@ class Player(Ship):
 class Enemy(Ship):
     color_map = {
         "red": (spaceShip_red, laser_red),
-        "green":(spaceShip_green, laser_green),
+        #"green":(spaceShip_green, laser_green),
         "blue":(spaceShip_blue, laser_blue)
     }
 
@@ -177,8 +211,9 @@ class RedEnemy(Enemy):
     def move(self, player, vel = 1):  #корабль следует медленно за игроком.
         #print("PLAYER POS", player.x, player.y)
         v = Vector(player, self)
-        print("MEGA VECTOR BLYAD", v.pointX, v.pointY)
-        print(v.Length())
+        # print("MEGA VECTOR BLYAD", v.pointX, v.pointY)
+        # print(v.Length())
+
 
         #плохая версия,корабли не движутся по вектору.попробуй сделать так что бы на один кадр вычисляли небольшой вектор и
         #на его координату(мал вектора) отправляли корабль
@@ -292,7 +327,7 @@ class BlueEnemy(Enemy):
         self.laser_draw(laserVel, obj)
         #self.move()
         if random.randrange(0, 120) == 1:
-            self.shoot()
+            self.shoot("up")
 
             #print(x, y)
 
@@ -301,6 +336,15 @@ class BlueEnemy(Enemy):
         #     if Collide(enemy, player):
         #         lives -= 1
         #         enemies.remove(enemy)
+
+    # def shoot(self):
+    #     if self.coolD_counter == 0:
+    #         laser = Laser(self.x, self.y, self.img_laser)
+    #         self.lasers.append(laser)
+    #         self.coolD_counter = 1
+
+
+
 
 
 
@@ -311,21 +355,48 @@ class BlueEnemy(Enemy):
 #
 #в будущем сделать потомков лазера=разне виды выстрелов(сплошной луч,короткий,но быстрый выстрел и тд)
 class Laser:
-    def __init__(self, x, y, img):
+    def __init__(self, x, y, img, direction):
         self.x = x
         self.y = y
         self.img = img
         self.mask = pygame.mask.from_surface(self.img) #коллизия?
+        self.direction = direction
+        self.imgRev = pygame.transform.rotate(self.img, 90)
+        self.imgRec = self.imgRev.get_rect(topleft=(self.x, self.y))
 
 
-    def draw(self, window):
-        window.blit(self.img, (self.x, self.y))
+    def draw(self, screen):
+         if self.direction == "up" or self.direction == "down":
+            screen.blit(self.img, (self.x, self.y))
+         elif self.direction == "left" or self.direction == "right":
+        #     # # screen.blit(pygame.transform.flip(self.img, True, True), (self.x, self.y))
+        #     # player_img = pygame.transform.rotate(self.img, 90)
+        #     # player_rec = player_img.get_rect(topleft=(self.x, self.y))
+             screen.blit(self.imgRev, (self.x, self.y))
+        #     # pygame.display.update()
+
+
+        # player_img = pygame.transform.rotate(self.img_ship, angle)
+        # player_rec = player_img.get_rect(topleft=(self.x, self.y))  #или без аргумента topleft, тести
+        # print(player_rec, "player rect")
+        # screen.blit(player_img, player_rec.topleft)
+        # pygame.display.update()
 
 
         # лазер должен двигаться по прямой траектории,не следовать за игроком.во время выстрела
         #метод находит координату игрока и движется к ней,делает только один раз,во время выстрела
     def move(self, vel):     #
-        self.y +=vel   #сделать так что бы лазер летел на позицию игрока!!!,или в сторону мышки
+        if self.direction == "up":
+            self.y += vel
+        elif self.direction == "down":
+            self.y -= vel
+        elif self.direction == "left":
+            self.x += vel
+        elif self.direction == "right":
+            self.x -= vel
+
+
+
 
 
     def notOn_screen(self, height):  #удалить лазер если он вне экрана
@@ -339,6 +410,10 @@ class Laser:
     def collision(self, obj):
         return Collide(obj, self)
         pass
+
+
+
+
 
 
 #____________________________________________
@@ -379,10 +454,15 @@ def mainMenu():
 
     game = True
     menu_font = pygame.font.SysFont("comicsans", 70)
+    menu_tutor = pygame.font.SysFont("comicsans", 40)
     while game:
         screen.blit(background, (0, 0))
         menu_label = menu_font.render("SpaceBar to start", 1, (255, 255, 255))
+        menu_tut_label = menu_tutor.render("WASD-move, arrow keys-shoot", 1, (255, 255, 255))
+
+
         screen.blit(menu_label, (width/2 - menu_label.get_width()/2, 350))
+        screen.blit(menu_tut_label, (width / 2 - menu_label.get_width() / 2 - 5, 600))
 
         pygame.display.update()
 
@@ -402,14 +482,15 @@ def mainMenu():
 def main():
     game = True
     lives = 5
-    font = pygame.font.SysFont("comicsans", 80)
-    font_game_over = pygame.font.SysFont("comicsans", 70)  #?поменять цвет?
+    level = 0
+    font = pygame.font.SysFont("comicsans", 50)
+    font_game_over = pygame.font.SysFont("comicsans", 20)  #?поменять цвет?
     fps = 60
     clock = pygame.time.Clock()
 
     #враги
     enemies = []
-    wave_length = 5
+    wave_length = 6
 
     laser_vel = 8
     player = Player(300, 650)
@@ -422,17 +503,33 @@ def main():
     #________________________________________
     def window_redraw():   #выписать HP игрока на экран!!!
         screen.blit(background, (0, 0)) #на surface screen перемещаем изобр background на координаты 0, 0
-        label_lives = font.render(f"{lives} lives", 1, (255, 255, 255)) #создаем surface с текстом
-        screen.blit(label_lives, (10, 10)) # накладываем surface на экран
+        label_enem = font.render(f"Enemy remaining: {len(enemies)}", 1, (255, 255, 255)) #создаем surface с текстом
+        label_level = font.render(f"Level: {level}", 1, (255, 255, 255))
+        screen.blit(label_level, (10, 10))
+        screen.blit(label_enem, (width - label_enem.get_width(), 10)) # накладываем surface на экран
 
         for enemy in enemies:
             enemy.draw(screen)
 
         player.draw(screen)
+        time_start = pygame.time.get_ticks()
 
         if game_over:    #ввсти выход в меню и удалить всех врагов+вернуть hp игроку
             label_game_over = font.render("YOU DIED", 1, (255, 0, 0))
+            label_game_over_comm = font_game_over.render("прям как в DarkSouls,понял да", 1, (255, 255, 255))
+            label_game_over_space = font_game_over.render("press space to start over", 1, (255, 255, 255))
+
             screen.blit(label_game_over, (width/2-label_game_over.get_width()/2, height/2))
+            screen.blit(label_game_over_comm, (width - label_game_over_comm.get_width()-10, height-10-label_game_over_comm.get_height()))
+            screen.blit(label_game_over_space, (width / 2 - label_game_over_space.get_width()/2 , height-20))
+
+
+            keys = pygame.key.get_pressed()
+            if keys[pygame.K_SPACE]:
+                mainMenu()  # ДАТЬ ТАЙМЕР
+
+
+
 
 
         pygame.display.update()
@@ -454,6 +551,7 @@ def main():
 
 
         if len(enemies) == 0:   #также если игрок все еще не начал новую игру(game_over=true)не спавнить врагов
+            level += 1
             for i in range(wave_length):
                 enemy = RedEnemy(random.randrange(50, width-100), random.randrange(10, 150), "red", player) #!!!!!!!!!!!!!!!redenemy = enemy
                 enemies.append(enemy)
@@ -473,6 +571,11 @@ def main():
             if event.type == pygame.QUIT:
                 quit()
 
+            if event.type == pygame.MOUSEMOTION:
+                pass
+              #player.rotateShip(player.x, player.y, event.pos)
+              #print(event.pos, "MOUSE POSITIOM")
+
 
 
 
@@ -488,8 +591,20 @@ def main():
         if keys[pygame.K_w] and player.y - player.vel >0:
             player.y -= player.vel
         if keys[pygame.K_SPACE]: #лазер формируется только один раз,мож проблема в cooldown?
-            print('shoooot')
-            player.shoot()
+            pass
+            # print('shoooot')    #в будущем ввести ускорение которое тратит hp
+            # player.shoot("up")
+            #player.rotateShip(50)
+        if keys[pygame.K_UP]:
+            player.shoot("up")
+        if keys[pygame.K_DOWN]:
+            player.shoot("down")
+        if keys[pygame.K_LEFT]:
+            player.shoot("left")
+        if keys[pygame.K_RIGHT]:
+            player.shoot("right")
+
+
 
 
 
