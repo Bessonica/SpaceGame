@@ -80,15 +80,15 @@ class Ship:
             self.coolD_counter += 1
 
 
-    # def laser_draw(self, vel, obj):  #метод рисует лазеры и проверяет столкнулись они с обьектом,а поведение обьектов будет расписано в классах
-    #     self.cooldown()
-    #     for laser in self.lasers:
-    #         laser.move(vel)
-    #         if laser.notOn_screen(height):
-    #             self.lasers.remove(laser)
-    #         elif laser.collision(obj):
-    #             obj.hp -= 1
-    #             self.lasers.remove(laser)  #лазер попал по обьекту и пропал
+    def laser_draw(self, vel, obj):  #метод рисует лазеры и проверяет столкнулись они с обьектом,а поведение обьектов будет расписано в классах
+        self.cooldown()
+        for laser in self.lasers:
+            laser.move(vel)
+            if laser.notOn_screen(height):
+                self.lasers.remove(laser)
+            elif laser.collision(obj):
+                obj.hp -= 1
+                self.lasers.remove(laser)  #лазер попал по обьекту и пропал
 
 
 
@@ -114,6 +114,16 @@ class Player(Ship):
                         obj.remove(enShip)
                         if laser in self.lasers:
                             self.lasers.remove(laser)
+
+    def hp_bar(self, screen):
+        pygame.draw.rect(screen, (255, 0, 0), (self.x, self.y + self.img_ship.get_height() + 10, self.img_ship.get_width(), 10))
+        pygame.draw.rect(screen, (0, 255, 0), (self.x, self.y + self.img_ship.get_height() + 10, self.img_ship.get_width()*(self.hp/self.hp_max), 10))
+
+    #взяли метод у родителя(ship) и добавили в него hp_bar()
+    def draw(self, screen):
+        super().draw(screen)
+        self.hp_bar(screen)
+
 
 
 
@@ -147,6 +157,7 @@ class Enemy(Ship):
 
 #камикадзе- идут напрямую на игрока,медленные,при сближении с гг или смерти взрываются!!наносят урон как игроку так и врагам!!
 class RedEnemy(Enemy):
+    colorShip = "red"
 
 
     def __init__(self, x, y, color, hp = 100):
@@ -154,11 +165,38 @@ class RedEnemy(Enemy):
 
     #может переименовать move в attack?или отдельный метод attack, что внутри себя использует move?+++после части #управление
     #вместо move вписать attack
-    def move(self, vel = 1):  #корабль следует медленно за игроком
-        self.x -= vel
+    def move(self,x, y, vel = 5):  #корабль следует медленно за игроком
+        self.x += vel
 
-    def attack(self):
-        pass
+    def moveLeft(self, vel = 5):
+        self.x -=vel
+
+
+
+
+
+
+
+            # if self.x>= width:
+            #     self.x -= vel
+            # elif self.x <= 0:
+            #     self.x += vel
+
+
+
+        # dirvect = pygame.math.Vector2(x - self.x, y - self.y) # КОД ЧТО БЫ КРАСНЫЙ ПРЕСЛЕДОВАЛ ИГРОКА
+        # dirvect.normalize()
+        # dirvect.scale_to_length(vel)
+        # print("DIRVECT", dirvect)   #dirvect[0] = x
+
+
+    def attack(self, x, y, laserVel, obj):  #x, y =player pos.  self.x, self.y = ENEMY POS
+        self.laser_draw(laserVel, obj)
+        self.move(x, y)
+        if random.randrange(0, 120) == 1:
+            self.shoot()
+
+       # print(x, y)
        # self.move()
 
 #проблема как достать координату игроку в класс Redenemy
@@ -166,16 +204,31 @@ class RedEnemy(Enemy):
 
 #снайпер
 class BlueEnemy(Enemy):
+    colorShip = "blue"
     def __init__(self, x, y, color, hp = 100):
         super().__init__(x, y, color, hp)
 
 
-    def move(self, vel = 1):  #корабль отлетает от игрока в сторону и снова делает выстрел
-        self.y -= vel
+    def move(self,x, y, vel = 5):  #корабль следует медленно за игроком
+        self.x += vel
 
-    def attack(self):   #здесь применяем move и laser
-        pass
+    def moveLeft(self, vel = 5):
+        self.x -=vel
+
+    def attack(self, x, y, laserVel, obj):   #здесь применяем move и laser
+        self.laser_draw(laserVel, obj)
         #self.move()
+        if random.randrange(0, 120) == 1:
+            self.shoot()
+
+            #print(x, y)
+
+        #тест для что бы не писать лишний код в ивент лупе,нужно вставить в аргументы enemies, player, lives.как то геморно
+        # for enemy in enemies:
+        #     if Collide(enemy, player):
+        #         lives -= 1
+        #         enemies.remove(enemy)
+
 
 
 #____________________________________
@@ -198,8 +251,8 @@ class Laser:
 
         # лазер должен двигаться по прямой траектории,не следовать за игроком.во время выстрела
         #метод находит координату игрока и движется к ней,делает только один раз,во время выстрела
-    def move(self, vel):     #при ппадании по игроку lives -= 1
-        self.y +=vel   #сделать так что бы лазер летел на позицию игрока!!!
+    def move(self, vel):     #
+        self.y +=vel   #сделать так что бы лазер летел на позицию игрока!!!,или в сторону мышки
 
 
     def notOn_screen(self, height):  #удалить лазер если он вне экрана
@@ -227,10 +280,31 @@ def Collide(obj1, obj2):
     offset_y = obj2.y - obj1.y
     return obj1.mask.overlap(obj2.mask, (offset_x, offset_y)) != None
 
-
-
-
 #___________________________________________
+
+
+
+
+
+
+def mainMenu():
+
+    game = True
+    menu_font = pygame.font.SysFont("comicsans", 70)
+    while game:
+        screen.blit(background, (0, 0))
+        menu_label = menu_font.render("SpaceBar to start", 1, (255, 255, 255))
+        screen.blit(menu_label, (width/2 - menu_label.get_width()/2, 350))
+
+        pygame.display.update()
+
+        for event in pygame.event.get():
+            menu_keys = pygame.key.get_pressed()
+            if event.type == pygame.QUIT:
+                game = False
+            if menu_keys[pygame.K_SPACE]:
+                main()
+    pygame.quit()
 
 #мож сделать цикл в while game: где есть цикл где каждый обьект в enemies проверяется с Collide,если да то исполь метод
 
@@ -239,8 +313,8 @@ def Collide(obj1, obj2):
 
 def main():
     game = True
-    lives = 4
-    font = pygame.font.SysFont("comicsans", 50)
+    lives = 5
+    font = pygame.font.SysFont("comicsans", 80)
     font_game_over = pygame.font.SysFont("comicsans", 70)  #?поменять цвет?
     fps = 60
     clock = pygame.time.Clock()
@@ -249,12 +323,13 @@ def main():
     enemies = []
     wave_length = 5
 
-    laser_vel = 5
-
-
+    laser_vel = 8
     player = Player(300, 650)
-    player_velocity = 5
+    player_velocity = 8
+
     game_over = False    #перемення что бы знать когда создавать меню при проигрыше,перезагружать игру
+
+
 
     #________________________________________
     def window_redraw():   #выписать HP игрока на экран!!!
@@ -268,7 +343,7 @@ def main():
         player.draw(screen)
 
         if game_over:    #ввсти выход в меню и удалить всех врагов+вернуть hp игроку
-            label_game_over = font.render("GAME OVER BUDDY", 1, (255, 255, 255))
+            label_game_over = font.render("YOU DIED", 1, (255, 0, 0))
             screen.blit(label_game_over, (width/2-label_game_over.get_width()/2, height/2))
 
 
@@ -308,7 +383,7 @@ def main():
         for event in pygame.event.get():
 
             if event.type == pygame.QUIT:
-                game = False
+                quit()
 
 
 
@@ -331,17 +406,50 @@ def main():
 
 
 # здесь нужно ввест координату игрока в метод attack(сделал метод give_position у ship- можно применить у всех кораблей)
-        #пока обойдусь без аттак проверь реагируют ли враги/игрок на выстрелы по себе
-        for enemy in enemies:
-            enemy.attack()  # 2 = enemy velocity
+        # в attack ввести метод laser_draw
+
+        for enemy in enemies:   #не работает!!!!
+            counter = 0
+
+            if enemy.x < width-100 and counter == 0:
+                enemy.move(player.x, player.y)
+            else:
+                counter = 1
+                print(1)
+
+            if counter == 1 and enemy.x>0:
+                enemy.moveLeft()
+
+
+
+
+            #enemy.attack(player.x, player.y, laser_vel, player)  # всунули laser_draw в attack
+
+
+            #старая версия,всунул все в метод attack
+            #enemy.laser_draw(laser_vel, player)
+            # if random.randrange(0, 240) == 1:
+            #     enemy.shoot()  # игрок получает урон но он не отображается на экране+некоторые корабли вообще не стреляют
+
 
             #здесь настроить поведение для камикадзе
             #если collide = true и враг = redenemy.запустить метод explode для red enemy.написать метод explode
-            #а можно ли вставить этот луп в метод attack для каждого екласса кораблей
+            # ну или просто в петле вписать,но мне кажется сделать отдельный метод explode будет красивее
         for enemy in enemies:
-            if Collide(enemy, player):
-                lives -= 1
-                enemies.remove(enemy)
+            if enemy.colorShip == "red":
+                if Collide(enemy, player):
+                    player.hp -= 5
+                    # lives -= 1
+                    enemies.remove(enemy)
+            else:
+                if Collide(enemy, player):
+                    player.hp -= 3
+                    # lives -= 1
+                    enemies.remove(enemy)
+
+
+
+
 
 
 
@@ -355,7 +463,7 @@ def main():
 
 
 
-main()
+mainMenu()
 
 # как получить расположение мыши
 # pg.mouse.get_pos()
@@ -369,8 +477,13 @@ main()
 #можно ли коллизию(self.mask = pygame.mask.from_surface(self.img)) поместить не в отдельные классы кораблей
 #а в общий класс Ship? !!может поместить mask в класс Enemy,там уже определяют изображение кораблям
 
-
-
+#идея как все организоваать у двух классов врагов разные методы attack но им обоим нужны координаты игрока
+#
+#переделать метод move в классе laser.надо в метод move или attack всунуть координаты игрока,что бы расчитать вектор
+#метод attack в классах redEnemy, blueEnemy
+#shoot в class SHip
+#
+#
 
 
 
