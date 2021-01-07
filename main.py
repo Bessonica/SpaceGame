@@ -4,6 +4,7 @@ import sys
 import os
 import time
 import random
+import math
 pygame.font.init()
 
 width = 1250
@@ -94,12 +95,13 @@ class Ship:
 
 #класс player наследует от ship
 class Player(Ship):
-    def __init__(self, x, y, hp=10):
+    def __init__(self, x, y,vel = 8 , hp=10):
         super().__init__(x, y, hp) #используем метод инит из ship
         self.img_ship = spaceShip_yellow
         self.img_laser = laser_yellow
         self.mask = pygame.mask.from_surface(self.img_ship)#коллизия!!!!
         self.hp_max = hp
+        self.vel = vel
 
 
     def laser_draw(self, vel, obj):
@@ -160,13 +162,71 @@ class RedEnemy(Enemy):
     colorShip = "red"
 
 
-    def __init__(self, x, y, color, hp = 100):
+    def __init__(self, x, y, color, player, hp = 100):
         super().__init__(x, y, color, hp)
+        self.x = x
+        self.y = y
+        self.vec_start = pygame.math.Vector2((player.x, player.y))
+        self.vec_end = pygame.math.Vector2((x, y)).normalize()
 
     #может переименовать move в attack?или отдельный метод attack, что внутри себя использует move?+++после части #управление
     #вместо move вписать attack
-    def move(self,x, y, vel = 5):  #корабль следует медленно за игроком
-        self.x += vel
+    # def move(self,x, y, vel = 5):  #корабль следует медленно за игроком
+    #     self.x += vel
+    #  движение выглядит неестественно.корабль !!!!не движется по вектору!!! исправит ь это
+    def move(self, player, vel = 1):  #корабль следует медленно за игроком.
+        #print("PLAYER POS", player.x, player.y)
+        v = Vector(player, self)
+        print("MEGA VECTOR BLYAD", v.pointX, v.pointY)
+        print(v.Length())
+
+        #плохая версия,корабли не движутся по вектору.попробуй сделать так что бы на один кадр вычисляли небольшой вектор и
+        #на его координату(мал вектора) отправляли корабль
+        if v != 0:
+            if v.pointX > 0:
+                self.x += vel
+                # self.y += vel
+            elif v.pointX <= 0:
+                self.x -= vel
+            else:
+                pass
+
+            if v.pointY > 0:
+                self.y += vel
+                # self.y += vel
+            elif v.pointY <= 0:
+                self.y -= vel
+            else:
+                pass
+
+
+
+
+
+            #Y
+            # if v.pointY > 0:
+            #     self.y += vel
+            #     # self.y += vel
+            # elif v.pointY <= 0:
+            #     self.y -= vel
+            # else:
+            #     pass
+
+            #X
+            # if v.pointX > 0:
+            #     self.x += vel
+            #     #self.y += vel
+            # elif v.pointX <=0:
+            #     self.x -= vel
+            # else:
+            #     pass
+
+
+        #print("red vector", Vector(player, self))
+
+
+
+
 
     def moveLeft(self, vel = 5):
         self.x -=vel
@@ -190,11 +250,11 @@ class RedEnemy(Enemy):
         # print("DIRVECT", dirvect)   #dirvect[0] = x
 
 
-    def attack(self, x, y, laserVel, obj):  #x, y =player pos.  self.x, self.y = ENEMY POS
-        self.laser_draw(laserVel, obj)
-        self.move(x, y)
-        if random.randrange(0, 120) == 1:
-            self.shoot()
+    def attack(self, player, laserVel, obj):  #x, y =player pos.  self.x, self.y = ENEMY POS
+        self.move(player)
+        # self.laser_draw(laserVel, player)
+        # if random.randrange(0, 120) == 1:  #frames PER SECOND = 60, шанс попадания в 2 сек = 50%
+        #     self.shoot()
 
        # print(x, y)
        # self.move()
@@ -209,13 +269,26 @@ class BlueEnemy(Enemy):
         super().__init__(x, y, color, hp)
 
 
-    def move(self,x, y, vel = 5):  #корабль следует медленно за игроком
-        self.x += vel
+    # def move(self,x, y, vel = 5):  #корабль следует медленно за игроком
+    #     self.x += vel
+
+    def move(self,player, vel = 5):  #корабль следует медленно за игроком
+        pass
+        # vector = Vector(player, self)
+        # vel_x = vector[0]/50
+        # vel_y = vector[1]/50
+        # print("VEL X Y", vel_x, vel_y)
+        # self.x += vel_x
+        # self.y += vel_y
+        # print("PLAYER", player.x, player.y)
+        # print("ENEMY", self.x, self.y)
+        # print("vector lenthg", Vector(player, self))
+        #print("VECTOR", vectorX, vectorY)
 
     def moveLeft(self, vel = 5):
         self.x -=vel
 
-    def attack(self, x, y, laserVel, obj):   #здесь применяем move и laser
+    def attack(self, player, laserVel, obj):   #здесь применяем move и laser
         self.laser_draw(laserVel, obj)
         #self.move()
         if random.randrange(0, 120) == 1:
@@ -283,6 +356,21 @@ def Collide(obj1, obj2):
 #___________________________________________
 
 
+# def Vector(obj1, obj2):   #obj1 = обьект к которому направляемся(player), obj2 = enemy
+#     print(obj1.x, obj1.y )
+#     vectorX = obj1.x - obj2.x
+#     vectorY = obj1.y - obj2.y
+#     vectorLength = math.sqrt((vectorX ** 2) + (vectorY ** 2))
+#     return vectorX, vectorY
+
+
+class Vector:
+    def __init__(self, obj1, obj2):   #obj1 куда, obj2 откуда
+        self.pointX = obj1.x - obj2.x
+        self.pointY = obj1.y - obj2.y
+
+    def Length(self):
+        return math.sqrt((self.pointX**2) + (self.pointY**2))
 
 
 
@@ -325,7 +413,7 @@ def main():
 
     laser_vel = 8
     player = Player(300, 650)
-    player_velocity = 8
+
 
     game_over = False    #перемення что бы знать когда создавать меню при проигрыше,перезагружать игру
 
@@ -367,7 +455,7 @@ def main():
 
         if len(enemies) == 0:   #также если игрок все еще не начал новую игру(game_over=true)не спавнить врагов
             for i in range(wave_length):
-                enemy = RedEnemy(random.randrange(50, width-100), random.randrange(10, 150), "red") #!!!!!!!!!!!!!!!redenemy = enemy
+                enemy = RedEnemy(random.randrange(50, width-100), random.randrange(10, 150), "red", player) #!!!!!!!!!!!!!!!redenemy = enemy
                 enemies.append(enemy)
                 # print(enemy.color_map)
 
@@ -391,14 +479,14 @@ def main():
 
 #управление
         keys = pygame.key.get_pressed()
-        if keys[pygame.K_a] and player.x - player_velocity >0:
-            player.x -= player_velocity
-        if keys[pygame.K_d] and player.x + player_velocity + player.get_width() < width:
-            player.x += player_velocity
-        if keys[pygame.K_s] and player.y + player_velocity + player.get_height() < height:
-            player.y += player_velocity
-        if keys[pygame.K_w] and player.y - player_velocity >0:
-            player.y -= player_velocity
+        if keys[pygame.K_a] and player.x - player.vel  >0:
+            player.x -= player.vel
+        if keys[pygame.K_d] and player.x + player.vel + player.get_width() < width:
+            player.x += player.vel
+        if keys[pygame.K_s] and player.y + player.vel + player.get_height() < height:
+            player.y += player.vel
+        if keys[pygame.K_w] and player.y - player.vel >0:
+            player.y -= player.vel
         if keys[pygame.K_SPACE]: #лазер формируется только один раз,мож проблема в cooldown?
             print('shoooot')
             player.shoot()
@@ -408,17 +496,10 @@ def main():
 # здесь нужно ввест координату игрока в метод attack(сделал метод give_position у ship- можно применить у всех кораблей)
         # в attack ввести метод laser_draw
 
-        for enemy in enemies:   #не работает!!!!
-            counter = 0
+        for enemy in enemies:
+            #enemy.move(player)
+            enemy.attack(player, laser_vel, player)
 
-            if enemy.x < width-100 and counter == 0:
-                enemy.move(player.x, player.y)
-            else:
-                counter = 1
-                print(1)
-
-            if counter == 1 and enemy.x>0:
-                enemy.moveLeft()
 
 
 
@@ -484,6 +565,13 @@ mainMenu()
 #shoot в class SHip
 #
 #
+
+
+
+
+
+
+
 
 
 
